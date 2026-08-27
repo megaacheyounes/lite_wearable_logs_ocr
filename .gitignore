@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local configuration and generated evidence can contain device/log data.
+config/local.json
+runs/
+calibration/
+tests/fixtures/private/
+
+# OCR/model and tool caches.
+.cache/
+*.onnx

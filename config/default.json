@@ -1,0 +1,44 @@
+{
+  "toolVersion": "0.1.0",
+  "adbPath": "D:\\Android\\sdk\\platform-tools\\adb.exe",
+  "assistantPackage": "com.huawei.deveco.assistant",
+  "assistantActivity": ".activity.LogListActivity",
+  "outputDirectory": "runs",
+  "localConfigPath": "config/local.json",
+  "crop": [0.0556, 0.1458, 0.9444, 0.9375],
+  "swipe": [0.5, 0.78, 0.5, 0.32],
+  "swipeDurationMs": 450,
+  "screenshotIntervalSeconds": 2.0,
+  "defaultFollowSeconds": 60,
+  "maximumPages": 50,
+  "maximumDurationSeconds": 3600,
+  "repeatedScreenLimit": 2,
+  "ocr": {
+    "engine": "rapidocr-onnxruntime",
+    "language": "ch_en",
+    "recognitionModelVersion": "PP-OCRv6",
+    "recognitionModelType": "small",
+    "prefixAssistant": {
+      "enabled": true,
+      "language": "latin",
+      "recognitionModelVersion": "PP-OCRv4",
+      "recognitionModelType": "mobile",
+      "endMarker": "APP:"
+    },
+    "pipeline": "crop",
+    "lowConfidenceThreshold": 0.8
+  },
+  "reconstruction": {
+    "timestampPattern": "^\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d+)?\\b",
+    "prefixPattern": "^\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d+)?(?:\\s+\\S+){0,8}",
+    "hardWrapRightRatio": 0.82,
+    "edgeMarginLineHeights": 0.75,
+    "fuzzyOverlapThreshold": 0.98,
+    "minimumFuzzyOverlapRecords": 2
+  },
+  "credibilityPatterns": [
+    "\\d{1,2}:\\d{2}:\\d{2}",
+    "\\[(?:INFO|WARN|WARNING|ERROR|DEBUG|FATAL)\\]",
+    "(?:INFO|WARN|WARNING|ERROR|DEBUG|FATAL)"
+  ]
+}
