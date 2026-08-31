@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wearable-logs-ocr"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local OCR extraction of Huawei Lite Wearable logs displayed by DevEco Assistant"
 requires-python = ">=3.12,<3.13"
 

@@ -7,7 +7,7 @@ from typing import Any
 from .config import load_config, parse_normalized_geometry
 from .errors import ConfigurationError, WearableLogsError
 from .ocr import PIPELINES
-from .workflow import apply_overrides, calibrate, doctor, execute_capture
+from .workflow import apply_overrides, calibrate, doctor, execute_capture, process_existing_run
 
 
 def _geometry_tokens(values: list[str] | None, label: str) -> list[float] | None:
@@ -49,15 +49,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     calibrate_parser = subparsers.add_parser("calibrate", help="Save a reference/overlay and write normalized local geometry.")
     _add_common(calibrate_parser)
+    process_parser = subparsers.add_parser("process-run", help="Resume validated OCR processing for an existing run.")
+    process_parser.add_argument("--run-dir", required=True, help="Existing timestamped run directory to process.")
+    process_parser.add_argument("--config", help="Override the local configuration file path for runtime defaults.")
+    process_parser.add_argument("--verbose", action="store_true", help="Print diagnostic details without log text.")
     return parser
 
 
 def _validate(arguments: Any, config: dict[str, Any]) -> None:
-    if arguments.interval is not None and not 0.5 <= arguments.interval <= 60:
+    if getattr(arguments, "interval", None) is not None and not 0.5 <= arguments.interval <= 60:
         raise ConfigurationError("--interval must be between 0.5 and 60 seconds.")
-    if arguments.repeat_limit is not None and arguments.repeat_limit < 1:
+    if getattr(arguments, "repeat_limit", None) is not None and arguments.repeat_limit < 1:
         raise ConfigurationError("--repeat-limit must be at least 1.")
-    if arguments.swipe_duration_ms is not None and not 50 <= arguments.swipe_duration_ms <= 5000:
+    if getattr(arguments, "swipe_duration_ms", None) is not None and not 50 <= arguments.swipe_duration_ms <= 5000:
         raise ConfigurationError("--swipe-duration-ms must be between 50 and 5000.")
     if arguments.command == "capture":
         if not 1 <= arguments.pages <= int(config["maximumPages"]):
@@ -77,15 +81,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     try:
         arguments = parser.parse_args(argv)
-        arguments.crop = _geometry_tokens(arguments.crop, "crop")
-        arguments.swipe = _geometry_tokens(arguments.swipe, "swipe")
+        arguments.crop = _geometry_tokens(getattr(arguments, "crop", None), "crop")
+        arguments.swipe = _geometry_tokens(getattr(arguments, "swipe", None), "swipe")
         config, local_path = load_config(arguments.config)
         config = apply_overrides(config, arguments)
-        if arguments.ocr_pipeline:
+        if getattr(arguments, "ocr_pipeline", None):
             config["ocr"]["pipeline"] = arguments.ocr_pipeline
         _validate(arguments, config)
         if arguments.command == "doctor":
             return doctor(config, arguments)
+        if arguments.command == "process-run":
+            result = process_existing_run(config, arguments.run_dir)
+            print(f"Completed: {result}")
+            return 0
         if arguments.command in ("capture", "follow"):
             result = execute_capture(config, arguments, arguments.command)
         else:

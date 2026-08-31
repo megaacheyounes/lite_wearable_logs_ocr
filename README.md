@@ -19,9 +19,12 @@ The first command creates `.venv` and installs the exact versions in `requiremen
 .\Get-WearableLogs.ps1 capture
 .\Get-WearableLogs.ps1 capture --pages 20
 .\Get-WearableLogs.ps1 follow --seconds 120
+.\Get-WearableLogs.ps1 calibrate
 ```
 
 `capture` defaults to one screenshot and does not swipe unless `--pages` is greater than one. `follow` never swipes; it takes screenshots on a monotonic schedule and performs OCR after the capture window.
+
+Every scheduled `follow` screenshot is retained for audit. Post-processing groups screenshots by the exact cropped-pixel SHA-256, invokes OCR once per unique crop, and reuses that result for exact matches. It does not use fuzzy or perceptual image hashes, and an unchanged screen never ends a bounded follow early. Consecutive crop states are collapsed in the transition audit while later non-consecutive returns remain chronological (for example, `A,A,B,A` is recorded as `A,B,A`).
 
 Useful options:
 
@@ -63,12 +66,26 @@ Every capture/follow/calibration creates a unique UTC timestamp plus random-suff
 
 - `logs.txt` — one complete logical record per line, in capture order, with overlap removed.
 - `logs.raw.txt` — OCR visual rows exactly as returned, in capture order.
-- `manifest.json` — arguments, timestamps, versions, Git/device/Assistant metadata, configuration, model hashes, screenshot hashes, confidence summary, warnings, and final state.
-- `ocr-results.json` — detections, confidence, bounding boxes, wrapped-line joins, model-witness decisions, edge exclusions, and overlap decisions.
+- `manifest.json` — arguments, timestamps, versions, Git/device/Assistant metadata, configuration, model hashes, screenshot hashes, confidence summary, processing counters, warnings, and final state.
+- `ocr-results.json` — exact crop states, chronological transitions, per-screenshot reuse relationships, detections, confidence, bounding boxes, wrapped-line joins, model-witness decisions, edge exclusions, and overlap decisions.
 - `screenshots/` — original ADB PNG bytes.
 - `processed/` — only derived images actually supplied to OCR.
 
 Text and JSON are UTF-8. A record cut by the top or bottom of a screenshot remains in `logs.raw.txt` and the audit JSON but is marked and omitted from `logs.txt`. Low-confidence text is never discarded; it is preserved and flagged in the audit and manifest.
+
+If capture or OCR is interrupted with Ctrl+C, the command exits with code 130 and finalizes the manifest as `interrupted`. Completed screenshots always remain untouched. Completed OCR results and `logs.raw.txt` are saved as partial output; `logs.txt` is written only after normalized reconstruction succeeds.
+
+## Resume interrupted processing
+
+Resume OCR after a completed capture whose processing was interrupted:
+
+```powershell
+.\Get-WearableLogs.ps1 process-run --run-dir ".\runs\<run-id>"
+```
+
+Before OCR, `process-run` validates every screenshot byte hash, dimensions, and exact cropped-pixel hash. It refuses altered evidence and a run owned by a live process. On the first resume it preserves the original manifest as `manifest.pre-resume.json`, reuses validated completed OCR results, invokes OCR only for remaining unique crop hashes, and records resume history and the current tool version. Re-running it on a valid completed run performs validation but no OCR and does not duplicate records.
+
+The resume command never changes screenshots. It may finalize `manifest.json`, write or update OCR/text outputs, and add derived representative crops under `processed/`.
 
 The tool uses the primary PP-OCRv6 model for punctuation fidelity and a Latin PP-OCRv4 prefix witness. The witness may supply whitespace only when both models agree on every non-whitespace prefix character. No guessed characters or spelling/value repairs are applied.
 
@@ -79,6 +96,8 @@ The tool uses the primary PP-OCRv6 model for punctuation fidelity and a Latin PP
 - **Wrong foreground app:** manually open DevEco Assistant and its Logs screen. The tool does not navigate automatically.
 - **Locked phone:** unlock it and keep the screen awake during capture.
 - **No OCR text:** verify logs are visible, then calibrate the crop. The failed run still contains its manifest and any captured evidence.
+- **Interrupted processing:** use `process-run`; do not copy screenshots into a new run or edit the original manifest manually.
+- **Hash mismatch during resume:** retain the run unchanged and investigate the altered/missing screenshot. The tool intentionally refuses to OCR it.
 - **Loading content…:** wait for the wearable logs to appear. UIAutomator text and `adb logcat` are not substitutes.
 - **Assistant activity changed:** a changed activity produces a warning as long as the Assistant package is still foregrounded; recalibrate if its layout changed.
 - **PowerShell execution policy:** if local policy blocks scripts, use the organization-approved method for running a local signed or reviewed script. Do not lower machine-wide policy for this tool.

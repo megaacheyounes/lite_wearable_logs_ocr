@@ -1,5 +1,5 @@
 {
-  "toolVersion": "0.1.0",
+  "toolVersion": "0.2.0",
   "adbPath": "D:\\Android\\sdk\\platform-tools\\adb.exe",
   "assistantPackage": "com.huawei.deveco.assistant",
   "assistantActivity": ".activity.LogListActivity",
